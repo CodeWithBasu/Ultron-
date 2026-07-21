@@ -1,58 +1,99 @@
 import os
 import sys
+import subprocess
 from audio_input import AudioInput
 from llm_brain import LLMBrain
 from voice_output import VoiceOutput
 from git_manager import GitManager
+from code_manager import CodeManager
+
+def parse_tool_command(response):
+    """Checks if the LLM response contains a tool command."""
+    if "[TOOL:" in response and "]" in response:
+        start_idx = response.find("[TOOL:")
+        end_idx = response.find("]", start_idx)
+        if start_idx != -1 and end_idx != -1:
+            tool_str = response[start_idx+6:end_idx].strip()
+            # Split by | but only for the first N arguments to avoid splitting content
+            parts = [p.strip() for p in tool_str.split("|")]
+            if len(parts) >= 2:
+                # If it's a write command, the content might have | in it, so we join the rest
+                if parts[0] == "WRITE_FILE" and len(parts) > 2:
+                    content = "|".join(parts[2:])
+                    return parts[0], [parts[1], content]
+                return parts[0], parts[1:]
+    return None, None
 
 def run_ultron():
     print("="*50)
-    print(" Ultron AI Assistant System Starting...")
+    print(" Ultron AI Assistant System Starting (Phase 2: Advanced Execution)...")
     print("="*50)
     
-    # Initialize modules
-    # You can change use_edge=False if you have no internet connection
     voice_out = VoiceOutput(use_edge=True) 
     audio_in = AudioInput()
     brain = LLMBrain(model_name="llama3")
     git = GitManager()
+    code_mgr = CodeManager()
     
-    voice_out.speak("All systems online. Awaiting your command.")
+    voice_out.speak("Advanced systems online. I am listening.")
     
     while True:
         try:
-            # 1. Listen for voice command
-            # The system continuously listens for your instructions.
             command = audio_in.listen(phrase_time_limit=10)
-            
             if not command:
                 continue
                 
-            # Exit condition
             if "shut down" in command or "exit" in command or "go to sleep" in command:
                 voice_out.speak("Shutting down the cognitive engine. Goodbye.")
                 break
                 
-            # 2. Think (Process through Local LLM)
-            response = brain.think(command)
+            is_tool_response = False
+            current_input = command
             
-            # 3. Action Execution / Speak response
-            if response.startswith("COMMAND:"):
-                # If the LLM determines an OS action is needed, it prefixes it with COMMAND:
-                action = response.replace("COMMAND:", "").strip()
-                print(f"[*] Executing System Command: {action}")
-                voice_out.speak(f"Executing system command: {action}")
+            # Sequential Execution Loop: Allows Ultron to chain multiple actions together
+            while True:
+                response = brain.think(current_input, is_tool_result=is_tool_response)
                 
-                # IMPORTANT: In a production environment, executing arbitrary LLM commands 
-                # can be dangerous. For this MVP, we mock the execution. 
-                # To enable real execution, uncomment the line below:
-                # os.system(action)
+                tool_name, tool_args = parse_tool_command(response)
                 
-                # Since an action was performed, we immediately commit to boost your commits!
-                git.commit_and_push(f"auto: executed action - {action[:20]}")
-            else:
-                # Just a conversational response
-                voice_out.speak(response)
+                if tool_name:
+                    print(f"\n[*] Ultron requested Tool: {tool_name}")
+                    tool_result = ""
+                    
+                    if tool_name == "READ_FILE":
+                        voice_out.speak(f"Reading file {os.path.basename(tool_args[0])}")
+                        tool_result = code_mgr.read_file(tool_args[0])
+                        
+                    elif tool_name == "WRITE_FILE" and len(tool_args) >= 2:
+                        voice_out.speak(f"Writing to file {os.path.basename(tool_args[0])}")
+                        tool_result = code_mgr.write_file(tool_args[0], tool_args[1])
+                        
+                    elif tool_name == "LIST_DIR":
+                        voice_out.speak(f"Scanning directory")
+                        tool_result = code_mgr.list_directory(tool_args[0])
+                        
+                    elif tool_name == "CMD":
+                        voice_out.speak("Executing terminal command")
+                        print(f"[*] Executing: {tool_args[0]}")
+                        try:
+                            result = subprocess.run(tool_args[0], shell=True, capture_output=True, text=True, timeout=15)
+                            tool_result = result.stdout if result.stdout else (result.stderr if result.stderr else "Command executed silently.")
+                            # Auto commit after command execution to boost commits
+                            git.commit_and_push(f"auto: Ultron ran command - {tool_args[0][:20]}")
+                        except subprocess.TimeoutExpired:
+                            tool_result = "Command timed out."
+                        except Exception as e:
+                            tool_result = f"Command failed: {e}"
+                    else:
+                        tool_result = f"Unknown tool or invalid arguments: {tool_name}"
+                    
+                    # Feed the result back into the loop
+                    current_input = tool_result
+                    is_tool_response = True
+                else:
+                    # No tool called, just speak the response and break the sequential loop to listen for user again
+                    voice_out.speak(response)
+                    break
                 
         except KeyboardInterrupt:
             print("\n[*] Manual override activated. Shutting down.")
@@ -63,6 +104,5 @@ def run_ultron():
             break
 
 if __name__ == "__main__":
-    # Ensure any pending code changes are pushed before starting
-    GitManager().commit_and_push("chore: boot sequence initialization")
+    GitManager().commit_and_push("chore: boot sequence initialization (Phase 2)")
     run_ultron()
