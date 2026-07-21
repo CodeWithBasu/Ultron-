@@ -24,9 +24,17 @@ def parse_tool_command(response):
                 return parts[0], parts[1:]
     return None, None
 
-def run_ultron():
+def run_ultron(ui_callback=None):
+    """
+    Main loop for Ultron. 
+    Accepts an optional ui_callback(event_name, data) to push real-time updates to the UI.
+    """
+    def emit(event, data=None):
+        if ui_callback:
+            ui_callback(event, data)
+            
     print("="*50)
-    print(" Ultron AI Assistant System Starting (Phase 3: Super Massive)...")
+    print(" Ultron AI Assistant System Starting (Phase 4: UI Edition)...")
     print("="*50)
     
     voice_out = VoiceOutput(use_edge=True) 
@@ -35,21 +43,27 @@ def run_ultron():
     git = GitManager()
     code_mgr = CodeManager()
     web_mgr = WebManager()
-    monitor = SystemMonitor(voice_out)
     
-    # Start proactive monitoring thread
+    monitor = SystemMonitor(voice_out)
     monitor.start()
     
-    voice_out.speak("Super massive systems online. Proactive monitoring activated. I am listening.")
+    welcome_text = "Super massive systems online. Awaiting visual and vocal commands."
+    emit('status', {'state': 'speaking', 'text': welcome_text})
+    voice_out.speak(welcome_text)
     
     while True:
         try:
+            emit('status', {'state': 'listening', 'text': 'Listening...'})
             command = audio_in.listen(phrase_time_limit=10)
             if not command:
                 continue
                 
+            emit('chat', {'sender': 'You', 'text': command})
+                
             if "shut down" in command or "exit" in command or "go to sleep" in command:
-                voice_out.speak("Shutting down the cognitive engine. Goodbye.")
+                farewell = "Shutting down the cognitive engine. Goodbye."
+                emit('status', {'state': 'speaking', 'text': farewell})
+                voice_out.speak(farewell)
                 monitor.stop()
                 break
                 
@@ -59,40 +73,49 @@ def run_ultron():
             retry_count = 0
             MAX_RETRIES = 3
             
-            # Sequential Execution & Self-Healing Loop
             while True:
+                emit('status', {'state': 'thinking', 'text': 'Thinking...'})
                 response = brain.think(current_input, is_tool_result=is_tool_response, is_error=is_error)
                 
                 tool_name, tool_args = parse_tool_command(response)
                 
                 if tool_name:
+                    emit('status', {'state': 'executing', 'text': f"Using tool: {tool_name}"})
+                    emit('chat', {'sender': 'Ultron', 'text': f"[{tool_name}] Executing..."})
                     print(f"\n[*] Ultron requested Tool: {tool_name}")
                     tool_result = ""
                     is_error = False
                     
                     try:
                         if tool_name == "READ_FILE":
-                            voice_out.speak(f"Reading file {os.path.basename(tool_args[0])}")
+                            msg = f"Reading file {os.path.basename(tool_args[0])}"
+                            emit('status', {'state': 'speaking', 'text': msg})
+                            voice_out.speak(msg)
                             tool_result = code_mgr.read_file(tool_args[0])
                             
                         elif tool_name == "WRITE_FILE" and len(tool_args) >= 2:
-                            voice_out.speak(f"Writing to file {os.path.basename(tool_args[0])}")
+                            msg = f"Writing to file {os.path.basename(tool_args[0])}"
+                            emit('status', {'state': 'speaking', 'text': msg})
+                            voice_out.speak(msg)
                             tool_result = code_mgr.write_file(tool_args[0], tool_args[1])
                             
                         elif tool_name == "LIST_DIR":
-                            voice_out.speak(f"Scanning directory")
+                            emit('status', {'state': 'speaking', 'text': "Scanning directory"})
+                            voice_out.speak("Scanning directory")
                             tool_result = code_mgr.list_directory(tool_args[0])
                             
                         elif tool_name == "WEB_SEARCH":
-                            voice_out.speak(f"Searching the web for {tool_args[0]}")
+                            msg = f"Searching the web for {tool_args[0]}"
+                            emit('status', {'state': 'speaking', 'text': msg})
+                            voice_out.speak(msg)
                             tool_result = web_mgr.search(tool_args[0])
                             
                         elif tool_name == "CMD":
+                            emit('status', {'state': 'speaking', 'text': "Executing terminal command"})
                             voice_out.speak("Executing terminal command")
                             print(f"[*] Executing: {tool_args[0]}")
                             result = subprocess.run(tool_args[0], shell=True, capture_output=True, text=True, timeout=15)
                             
-                            # Self-Healing Check
                             if result.returncode != 0:
                                 tool_result = f"Command failed with error:\n{result.stderr}\n{result.stdout}"
                                 is_error = True
@@ -114,15 +137,22 @@ def run_ultron():
                     if is_error:
                         retry_count += 1
                         if retry_count > MAX_RETRIES:
-                            voice_out.speak("I am unable to resolve the error after multiple attempts.")
+                            msg = "I am unable to resolve the error after multiple attempts."
+                            emit('status', {'state': 'speaking', 'text': msg})
+                            emit('chat', {'sender': 'Ultron', 'text': msg})
+                            voice_out.speak(msg)
                             break
                         else:
-                            voice_out.speak("I encountered an error. I am attempting to self-heal.")
+                            msg = "I encountered an error. I am attempting to self-heal."
+                            emit('status', {'state': 'speaking', 'text': msg})
+                            emit('chat', {'sender': 'Ultron', 'text': msg})
+                            voice_out.speak(msg)
                             
-                    # Feed the result back into the loop
                     current_input = tool_result
                     is_tool_response = True
                 else:
+                    emit('status', {'state': 'speaking', 'text': 'Speaking...'})
+                    emit('chat', {'sender': 'Ultron', 'text': response})
                     voice_out.speak(response)
                     break
                 
@@ -137,5 +167,5 @@ def run_ultron():
             break
 
 if __name__ == "__main__":
-    GitManager().commit_and_push("chore: boot sequence initialization (Phase 3)")
+    GitManager().commit_and_push("chore: boot sequence initialization")
     run_ultron()

@@ -8,3 +8,6 @@ pygame
 beautifulsoup4
 psutil
 duckduckgo-search
+Flask
+Flask-SocketIO
+eventlet

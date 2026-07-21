@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultron UI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="background-animation"></div>
+    
+    <div class="container">
+        <!-- Visualizer -->
+        <div class="visualizer-container">
+            <div id="orb" class="orb idle"></div>
+            <div id="status-text" class="status-text">System Booting...</div>
+        </div>
+
+        <!-- Chat Log -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Ultron Terminal</h2>
+            </div>
+            <div id="chat-log" class="chat-log">
+                <!-- Messages will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const orb = document.getElementById('orb');
+        const statusText = document.getElementById('status-text');
+        const chatLog = document.getElementById('chat-log');
+
+        socket.on('status', function(data) {
+            statusText.innerText = data.text;
+            
+            // Remove all state classes
+            orb.classList.remove('idle', 'listening', 'thinking', 'speaking', 'executing');
+            
+            // Add new state class
+            orb.classList.add(data.state);
+        });
+
+        socket.on('chat', function(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            
+            if (data.sender === 'You') {
+                messageDiv.classList.add('user-message');
+                messageDiv.innerHTML = `<span class="sender">You:</span> ${data.text}`;
+            } else {
+                messageDiv.classList.add('ultron-message');
+                messageDiv.innerHTML = `<span class="sender">Ultron:</span> ${data.text}`;
+            }
+            
+            chatLog.appendChild(messageDiv);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        });
+    </script>
+</body>
+</html>
