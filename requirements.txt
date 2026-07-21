@@ -1,0 +1,7 @@
+SpeechRecognition
+PyAudio
+edge-tts
+pyttsx3
+ollama
+requests
+pygame
