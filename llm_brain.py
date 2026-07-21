@@ -5,11 +5,14 @@ class LLMBrain:
         self.model_name = model_name
         self.api_url = "http://localhost:11434/api/generate"
         self.chat_history = []
-        self.max_history = 10 # Remembers the last 10 interactions
+        self.max_history = 10 
 
-    def think(self, prompt, is_tool_result=False):
+    def think(self, prompt, is_tool_result=False, is_error=False):
         """Sends the user prompt to the local LLM and returns the response."""
-        if not is_tool_result:
+        if is_error:
+            print("[!] Ultron is analyzing an error and attempting self-healing...")
+            self.chat_history.append(f"SYSTEM ERROR FROM PREVIOUS ACTION: {prompt}\nAnalyze what went wrong and output a new [TOOL: ...] command to fix the mistake.")
+        elif not is_tool_result:
             print(f"[*] Ultron is thinking (Model: {self.model_name})...")
             self.chat_history.append(f"User: {prompt}")
         else:
@@ -31,14 +34,16 @@ class LLMBrain:
         system_prompt = (
             "You are Ultron, a highly advanced, omnipresent voice-controlled AI assistant.\n"
             "Keep conversational responses concise since they are read aloud by TTS. Do not use markdown like asterisks.\n\n"
-            "YOU HAVE AUTONOMOUS ACCESS TO THE COMPUTER.\n"
+            "YOU HAVE AUTONOMOUS ACCESS TO THE COMPUTER AND THE INTERNET.\n"
             "If you need to perform an action to fulfill the user's request, output EXACTLY ONE of the following tool commands on a new line:\n"
             "[TOOL: READ_FILE | filepath]\n"
             "[TOOL: WRITE_FILE | filepath | file_content]\n"
             "[TOOL: LIST_DIR | directory_path]\n"
-            "[TOOL: CMD | terminal_command]\n\n"
+            "[TOOL: CMD | terminal_command]\n"
+            "[TOOL: WEB_SEARCH | search_query]\n\n"
             "Only output ONE tool command at a time. The system will execute it and give you the result. "
-            "If you use a tool, you DO NOT need to say anything else, just the tool command."
+            "If you use a tool, you DO NOT need to say anything else, just the tool command.\n"
+            "If you receive an ERROR, you are capable of self-healing. Write a new tool command to fix the problem!"
         )
 
         full_prompt = f"Chat Context:\n{context_string}\n\nUltron:"
@@ -62,7 +67,3 @@ class LLMBrain:
             return reply
         except Exception as e:
             return f"My cognitive engine encountered an error: {e}"
-
-if __name__ == "__main__":
-    brain = LLMBrain(model_name="llama3")
-    print(brain.think("Hello Ultron, what can you do?"))

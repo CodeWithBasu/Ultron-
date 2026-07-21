@@ -5,3 +5,6 @@ pyttsx3
 ollama
 requests
 pygame
+beautifulsoup4
+psutil
+duckduckgo-search
