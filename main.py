@@ -9,19 +9,21 @@ from code_manager import CodeManager
 from web_manager import WebManager
 from monitor import SystemMonitor
 
+import re
+
 def parse_tool_command(response):
-    """Checks if the LLM response contains a tool command."""
-    if "[TOOL:" in response and "]" in response:
-        start_idx = response.find("[TOOL:")
-        end_idx = response.find("]", start_idx)
-        if start_idx != -1 and end_idx != -1:
-            tool_str = response[start_idx+6:end_idx].strip()
-            parts = [p.strip() for p in tool_str.split("|")]
-            if len(parts) >= 2:
-                if parts[0] == "WRITE_FILE" and len(parts) > 2:
-                    content = "|".join(parts[2:])
-                    return parts[0], [parts[1], content]
-                return parts[0], parts[1:]
+    """Checks if the LLM response contains a tool command, even if brackets are missing."""
+    match = re.search(r'\[?TOOL:\s*([^|\]]+)\s*\|\s*([^\]]+)\]?', response)
+    if match:
+        tool_name = match.group(1).strip()
+        tool_args_str = match.group(2).strip()
+        parts = [p.strip() for p in tool_args_str.split("|")]
+        
+        if tool_name == "WRITE_FILE" and len(parts) >= 2:
+            content = "|".join(parts[1:])
+            return tool_name, [parts[0], content]
+            
+        return tool_name, parts
     return None, None
 
 def run_ultron(ui_callback=None):
