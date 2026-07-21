@@ -6,6 +6,8 @@ Welcome to the Ultron project repository. Ultron is a next-generation, omniprese
 - **Total Voice Control:** Uses `SpeechRecognition` and `edge-tts` for high-quality human-like voice interaction.
 - **100% Local AI:** Powered by local Large Language Models. No API keys required. Total privacy.
 - **Auto-Committer:** Automatically pushes code and action logs to GitHub to boost your commit history.
+- **Advanced Execution (Phase 2):** Ultron can autonomously read files, write code, list directories, and execute terminal commands, seamlessly feeding the results back into its own cognitive loop.
+- **Contextual Memory:** Ultron remembers past conversations and interactions to maintain a continuous conversational state.
 
 ## Setup Instructions
 
@@ -30,4 +32,4 @@ Make sure your microphone is plugged in, and run:
 python main.py
 ```
 
-Ultron will calibrate the microphone, say "All systems online", and then listen for your commands! Every time Ultron makes a change to the system, it will automatically push to this repository to boost your commits.
+Ultron will calibrate the microphone, say "Advanced systems online", and then listen for your commands! Every time Ultron uses its hands to write files or execute commands, it will automatically push to this repository to boost your commits.
